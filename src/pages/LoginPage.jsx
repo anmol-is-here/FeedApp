@@ -1,9 +1,11 @@
 // ─── Login Page ────────────────────────────────────────────
 // Glassmorphism login/signup form inspired by Twitter/X
 // Supports two modes: Sign In and Sign Up (toggle with button)
-// Uses Redux authSlice for authentication (no Context API)
+// Uses react-hook-form (useForm) for form state + validation
+// Uses Redux authSlice for authentication
 
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useDispatch, useSelector } from 'react-redux';
 import { signup, login, selectIsLoggedIn } from '../store/authSlice';
 import { Navigate } from 'react-router-dom';
@@ -16,64 +18,51 @@ const LoginPage = () => {
     // Toggle between Login and Signup forms
     const [isSignup, setIsSignup] = useState(false);
 
-    // Error message shown below the header
-    const [error, setError] = useState('');
+    // Server-side error (e.g. "Username already taken") — separate from form validation errors
+    const [serverError, setServerError] = useState('');
 
-    // Form field states
-    const [name, setName] = useState('');
-    const [username, setUsername] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    // React Hook Form — handles form state, validation, and submission
+    const { register, handleSubmit, reset, formState: { errors } } = useForm({ mode: 'onChange' });
 
     // If already logged in, redirect to home page
     if (isLoggedIn) return <Navigate to="/" replace />;
 
     // ─── Form Submit Handler ───────────────────────────────
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        setError('');
+    // Called by react-hook-form only when all validations pass
+    const onSubmit = (data) => {
+        setServerError('');
 
         if (isSignup) {
-            // Validate all fields are filled
-            if (!name || !username || !email || !password) {
-                setError('All fields are required');
-                return;
-            }
             // Check for duplicate username/email in localStorage
             const users = JSON.parse(localStorage.getItem('users') || '[]');
-            if (users.find(u => u.username === username)) {
-                setError('Username already taken');
+            if (users.find(u => u.username === data.username)) {
+                setServerError('Username already taken');
                 return;
             }
-            if (users.find(u => u.email === email)) {
-                setError('Email already registered');
+            if (users.find(u => u.email === data.email)) {
+                setServerError('Email already registered');
                 return;
             }
             // Create account, then auto-login
-            dispatch(signup({ name, username, email, password }));
-            dispatch(login({ username, password }));
+            dispatch(signup({ name: data.name, username: data.username, email: data.email, password: data.password }));
+            dispatch(login({ username: data.username, password: data.password }));
         } else {
-            // Validate required fields
-            if (!username || !password) {
-                setError('Username and password required');
-                return;
-            }
             // Check credentials against localStorage
             const users = JSON.parse(localStorage.getItem('users') || '[]');
-            const user = users.find(u => u.username === username && u.password === password);
+            const user = users.find(u => u.username === data.username && u.password === data.password);
             if (!user) {
-                setError('Invalid username or password');
+                setServerError('Invalid username or password');
                 return;
             }
-            dispatch(login({ username, password }));
+            dispatch(login({ username: data.username, password: data.password }));
         }
     };
 
     // ─── Switch between Login/Signup ───────────────────────
     const switchMode = () => {
         setIsSignup(!isSignup);
-        setError('');
-        setName(''); setUsername(''); setEmail(''); setPassword('');
+        setServerError('');
+        reset();  // clear all form fields and validation errors
     };
 
     return (
@@ -105,35 +94,52 @@ const LoginPage = () => {
                         {isSignup ? 'Join the conversation today' : 'Welcome back — you\'ve been missed!'}
                     </p>
 
-                    {/* Error message */}
-                    {error && (
+                    {/* Server error message (duplicate username, wrong password, etc.) */}
+                    {serverError && (
                         <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 mb-6 text-red-400 text-sm text-center">
-                            {error}
+                            {serverError}
                         </div>
                     )}
 
-                    {/* Form — all inputs use GLASS_INPUT style from constants.js (DRY) */}
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Form — uses react-hook-form's handleSubmit + register */}
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 
-                        {/* Name field — only shown during signup */}
+                        {/* Name field — only shown during signup, required in signup mode */}
                         {isSignup && (
-                            <input type="text" value={name} onChange={e => setName(e.target.value)}
-                                placeholder="Full name" className={GLASS_INPUT} />
+                            <div>
+                                <input type="text"
+                                    {...register('name', { required: 'Full name is required' })}
+                                    placeholder="Full name" className={GLASS_INPUT} />
+                                {/* Validation error — shown below the input */}
+                                {errors.name && <p className="mt-1.5 text-xs text-red-400">{errors.name.message}</p>}
+                            </div>
                         )}
 
-                        {/* Username field — shown in both modes */}
-                        <input type="text" value={username} onChange={e => setUsername(e.target.value)}
-                            placeholder="Username" className={GLASS_INPUT} />
+                        {/* Username field — required in both modes */}
+                        <div>
+                            <input type="text"
+                                {...register('username', { required: 'Username is required', minLength: { value: 3, message: 'Min 3 characters' } })}
+                                placeholder="Username" className={GLASS_INPUT} />
+                            {errors.username && <p className="mt-1.5 text-xs text-red-400">{errors.username.message}</p>}
+                        </div>
 
                         {/* Email field — only shown during signup */}
                         {isSignup && (
-                            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                                placeholder="Email address" className={GLASS_INPUT} />
+                            <div>
+                                <input type="email"
+                                    {...register('email', { required: 'Email is required', pattern: { value: /^\S+@\S+$/i, message: 'Invalid email format' } })}
+                                    placeholder="Email address" className={GLASS_INPUT} />
+                                {errors.email && <p className="mt-1.5 text-xs text-red-400">{errors.email.message}</p>}
+                            </div>
                         )}
 
-                        {/* Password field — shown in both modes */}
-                        <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-                            placeholder="Password" className={GLASS_INPUT} />
+                        {/* Password field — required in both modes */}
+                        <div>
+                            <input type="password"
+                                {...register('password', { required: 'Password is required', minLength: { value: 4, message: 'Min 4 characters' } })}
+                                placeholder="Password" className={GLASS_INPUT} />
+                            {errors.password && <p className="mt-1.5 text-xs text-red-400">{errors.password.message}</p>}
+                        </div>
 
                         {/* Submit button */}
                         <button type="submit"

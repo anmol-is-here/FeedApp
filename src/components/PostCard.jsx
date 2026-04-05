@@ -12,15 +12,15 @@ import { useNavigate } from 'react-router-dom';
 import { useToggleLikeMutation, useDeletePostMutation } from '../store/apiSlice';
 import { hidePost, setEditingPost } from '../store/filterSlice';
 import { selectCurrentUser } from '../store/authSlice';
-import { HeartIcon, ChatBubbleOvalLeftIcon, PaperAirplaneIcon, BookmarkIcon, EllipsisHorizontalIcon } from '@heroicons/react/24/outline';
+import { HeartIcon, ChatBubbleOvalLeftIcon, PaperAirplaneIcon, BookmarkIcon, EllipsisHorizontalIcon, PencilSquareIcon, TrashIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartSolid, ChatBubbleOvalLeftIcon as ChatSolid, BookmarkIcon as BookmarkSolid } from '@heroicons/react/24/solid';
 import { USER_AVATAR } from '../constants';
 
 // Reusable style for bold clickable usernames
 const USERNAME_STYLE = "font-bold text-gray-100 mr-2 hover:underline cursor-pointer";
 
-// Reusable style for menu buttons (Edit, Delete, Hide)
-const MENU_BUTTON = "w-full text-left px-4 py-2.5 text-sm hover:bg-white/10 transition-colors";
+// Reusable style for menu buttons (Edit, Delete, Hide) — icon + text layout
+const MENU_BUTTON = "w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-white/10 transition-colors";
 
 const PostCard = ({ post }) => {
     const dispatch = useDispatch();
@@ -138,11 +138,20 @@ const PostCard = ({ post }) => {
                         <div className="absolute right-0 top-10 bg-[#1a1d27] border border-gray-700 rounded-xl shadow-2xl py-1 min-w-[140px] z-50">
                             {isOwner ? (
                                 <>
-                                    <button onClick={handleEdit} className={`${MENU_BUTTON} text-gray-200`}>✏️ Edit</button>
-                                    <button onClick={handleDelete} className={`${MENU_BUTTON} text-red-400`}>🗑️ Delete</button>
+                                    {/* Edit button — Heroicon pencil */}
+                                    <button onClick={handleEdit} className={`${MENU_BUTTON} text-gray-200`}>
+                                        <PencilSquareIcon className="w-4 h-4" /> Edit
+                                    </button>
+                                    {/* Delete button — Heroicon trash */}
+                                    <button onClick={handleDelete} className={`${MENU_BUTTON} text-red-400`}>
+                                        <TrashIcon className="w-4 h-4" /> Delete
+                                    </button>
                                 </>
                             ) : (
-                                <button onClick={handleHide} className={`${MENU_BUTTON} text-gray-200`}>👁️‍🗨️ Hide post</button>
+                                /* Hide button — Heroicon eye-slash */
+                                <button onClick={handleHide} className={`${MENU_BUTTON} text-gray-200`}>
+                                    <EyeSlashIcon className="w-4 h-4" /> Hide post
+                                </button>
                             )}
                         </div>
                     )}
